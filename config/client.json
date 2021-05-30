@@ -1,0 +1,19 @@
+{
+    "blips": [
+        {
+            "title": "Test valet",
+            "color": 18,
+            "blipId": 357,
+            "id": 1,
+            "x": -235.08,
+            "y": -983.48,
+            "z": 29.12
+        }
+    ],
+    "valet_1": {
+        "area": 30
+    },
+    "locale":{
+        "park": "Park"
+    }
+}
