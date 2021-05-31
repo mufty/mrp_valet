@@ -35,9 +35,6 @@ setInterval(() => {
     if (!ped)
         return;
 
-    let vehicle = GetVehiclePedIsIn(ped, true);
-    lastVehicle = vehicle;
-
     let [pX, pY, pZ] = GetEntityCoords(ped);
     let foundBlip = null;
     for (let info of blips) {
