@@ -103,7 +103,7 @@ on('__cfx_nui:park', (data, cb) => {
             1.0);
 
         while (GetScriptTaskStatus(valetNPCPed, 0x93A5526E) != 7) {
-            //wait until NPC in vehicle
+            //wait they finish a drive
             await utils.sleep(100);
         }
 

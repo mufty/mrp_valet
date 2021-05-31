@@ -11,7 +11,7 @@
         }
     ],
     "valet_1": {
-        "area": 30,
+        "area": 40,
         "npcSpawn": {
             "model": "s_m_y_valet_01",
             "x": -282.88,
