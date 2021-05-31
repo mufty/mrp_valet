@@ -12,8 +12,6 @@ eval(LoadResourceFile('mrp_core', 'client/helpers.js'));
 
 config = JSON.parse(configFile);
 
-console.log("creating blips");
-
 let blips = config.blips;
 for (let info of blips) {
     info.blip = AddBlipForCoord(info.x, info.y, info.z);
@@ -74,6 +72,8 @@ let getNearestVehicle = (ped, area) => {
     });
 };
 
+let vehiclesParking = {};
+
 RegisterNuiCallbackType('park');
 on('__cfx_nui:park', (data, cb) => {
     if (currentlyAtBlip == null)
@@ -84,6 +84,11 @@ on('__cfx_nui:park', (data, cb) => {
         let nearestVehicle = await getNearestVehicle(ped, config.nearestVehicleArea);
         if (!nearestVehicle || !nearestVehicle.vehicle)
             return;
+
+        if (!vehiclesParking[nearestVehicle.vehicle])
+            vehiclesParking[nearestVehicle.vehicle] = true;
+        else
+            return; //parking in progress don't do multiple valets
 
         let modelHash = GetHashKey(currentlyAtBlip.npcSpawn.model);
         RequestModel(modelHash);
@@ -124,6 +129,7 @@ on('__cfx_nui:park', (data, cb) => {
         }
 
         //parked despawn and save
+        delete vehiclesParking[nearestVehicle.vehicle];
         DeleteEntity(valetNPCPed);
         DeleteEntity(nearestVehicle.vehicle);
         //TODO save
