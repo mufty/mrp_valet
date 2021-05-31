@@ -1,3 +1,11 @@
+MRP_CLIENT = null;
+
+emit('mrp:vehicle:getSharedObject', obj => MRP_CLIENT = obj);
+
+while (MRP_CLIENT == null) {
+    print('Waiting for shared object....');
+}
+
 configFile = LoadResourceFile(GetCurrentResourceName(), 'config/client.json');
 
 eval(LoadResourceFile('mrp_core', 'client/helpers.js'));
@@ -62,13 +70,25 @@ setInterval(() => {
     currentlyAtBlip = foundBlip;
 }, 500);
 
+let getNearestVehicle = (ped, area) => {
+    return new Promise((resolve) => {
+        MRP_CLIENT.findNearestAccessibleVehicle(ped, 30, (veh) => {
+            resolve(veh);
+        });
+    });
+};
+
 RegisterNuiCallbackType('park');
 on('__cfx_nui:park', (data, cb) => {
-    //TODO change lastVehicle to nearest vehicle
-    if (lastVehicle == 0 || currentlyAtBlip == null)
+    if (currentlyAtBlip == null)
         return;
 
     let exec = async () => {
+        let ped = PlayerPedId();
+        let nearestVehicle = await getNearestVehicle(ped, config.nearestVehicleArea);
+        if (!nearestVehicle || !nearestVehicle.vehicle)
+            return;
+
         let modelHash = GetHashKey(currentlyAtBlip.npcSpawn.model);
         RequestModel(modelHash);
         while (currentlyAtBlip && !HasModelLoaded(modelHash)) {
@@ -81,7 +101,7 @@ on('__cfx_nui:park', (data, cb) => {
         let valetNPCPed = CreatePed(1, modelHash, currentlyAtBlip.npcSpawn.x, currentlyAtBlip.npcSpawn.y, currentlyAtBlip.npcSpawn.z, currentlyAtBlip.npcSpawn.heading, true, true);
         await utils.sleep(150);
         //tell guy to get into vehicle
-        TaskEnterVehicle(valetNPCPed, lastVehicle, 10000, -1, 2.0, 1, 0);
+        TaskEnterVehicle(valetNPCPed, nearestVehicle.vehicle, 10000, -1, 2.0, 1, 0);
         await utils.sleep(150);
         //task numbers from https://alloc8or.re/gta5/doc/enums/eScriptTaskHash.txt
         while (GetScriptTaskStatus(valetNPCPed, 0x950B6492) != 7) {
@@ -91,13 +111,13 @@ on('__cfx_nui:park', (data, cb) => {
 
         //786603 = normal driving mode more at https://gtaforums.com/topic/822314-guide-driving-styles/
         TaskVehicleDriveToCoord(valetNPCPed,
-            lastVehicle,
+            nearestVehicle.vehicle,
             currentlyAtBlip.parkAt.x,
             currentlyAtBlip.parkAt.y,
             currentlyAtBlip.parkAt.z,
             currentlyAtBlip.parkAt.speed,
             1.0,
-            GetEntityModel(lastVehicle),
+            GetEntityModel(nearestVehicle.vehicle),
             786603,
             1.0,
             1.0);
@@ -109,7 +129,7 @@ on('__cfx_nui:park', (data, cb) => {
 
         //parked despawn and save
         DeleteEntity(valetNPCPed);
-        DeleteEntity(lastVehicle);
+        DeleteEntity(nearestVehicle.vehicle);
         //TODO save
     };
 
