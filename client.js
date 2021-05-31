@@ -28,7 +28,6 @@ for (let info of blips) {
 }
 
 let currentlyAtBlip = null;
-let lastVehicle = null;
 
 setInterval(() => {
     let ped = PlayerPedId();
