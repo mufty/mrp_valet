@@ -11,7 +11,20 @@
         }
     ],
     "valet_1": {
-        "area": 30
+        "area": 30,
+        "npcSpawn": {
+            "model": "s_m_y_valet_01",
+            "x": -282.88,
+            "y": -989.45,
+            "z": 31.16,
+            "heading": 345.82
+        },
+        "parkAt": {
+            "x": -294.80,
+            "y": -991.05,
+            "z": 24.12,
+            "speed": 10
+        }
     },
     "locale":{
         "park": "Park"
