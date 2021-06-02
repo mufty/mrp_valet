@@ -59,8 +59,9 @@ setInterval(() => {
                     let displayName = GetDisplayNameFromVehicleModel(car.model);
                     displayName = GetLabelText(displayName);
                     submenu.push({
-                        plate: car.plate,
-                        model: displayName
+                        id: car.plate,
+                        text: displayName + " [" + car.plate + "]",
+                        action: 'https://mrp_valet/takeOut'
                     });
                 }
             }
