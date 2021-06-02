@@ -55,6 +55,11 @@ setInterval(() => {
             let submenu;
             if (cars || cars.length > 0) {
                 submenu = [];
+                submenu.push({
+                    id: 'PARK_VEHICLE',
+                    text: "Park current vehicle",
+                    action: 'https://mrp_valet/park'
+                });
                 for (let car of cars) {
                     let displayName = GetDisplayNameFromVehicleModel(car.model);
                     displayName = GetLabelText(displayName);
@@ -168,6 +173,11 @@ on("mrp:valet:saveVehicle", () => {
     exec();
 });
 
+on('mrp:valet:takeOut', (data) => {
+    console.log(data.id);
+    //TODO take out vehicle
+});
+
 RegisterNuiCallbackType('park');
 on('__cfx_nui:park', (data, cb) => {
     if (currentlyAtBlip == null)
@@ -175,6 +185,16 @@ on('__cfx_nui:park', (data, cb) => {
 
     emit("mrp:valet:startParkingScenario");
     emit("mrp:valet:saveVehicle");
+
+    cb();
+});
+
+RegisterNuiCallbackType('takeOut');
+on('__cfx_nui:takeOut', (data, cb) => {
+    if (currentlyAtBlip == null)
+        return;
+
+    emit("mrp:valet:takeOut", data);
 
     cb();
 });
