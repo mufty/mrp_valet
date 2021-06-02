@@ -41,7 +41,7 @@ setInterval(() => {
         let [blipX, blipY, blipZ] = GetBlipCoords(info.blip);
         let distanceFromBlip = Vdist(pX, pY, pZ, blipX, blipY, blipZ);
         let valetCfg = config["valet_" + info.id];
-        valetCfg.id = config["valet_" + info.id];
+        valetCfg.id = "valet_" + info.id;
         RequestModel(valetCfg.model);
         if (valetCfg.area >= distanceFromBlip) {
             foundBlip = valetCfg;
@@ -74,11 +74,7 @@ let getNearestVehicle = (ped, area) => {
 
 let vehiclesParking = {};
 
-RegisterNuiCallbackType('park');
-on('__cfx_nui:park', (data, cb) => {
-    if (currentlyAtBlip == null)
-        return;
-
+on("mrp:valet:startParkingScenario", () => {
     let exec = async () => {
         let ped = PlayerPedId();
         let nearestVehicle = await getNearestVehicle(ped, config.nearestVehicleArea);
@@ -132,10 +128,36 @@ on('__cfx_nui:park', (data, cb) => {
         delete vehiclesParking[nearestVehicle.vehicle];
         DeleteEntity(valetNPCPed);
         DeleteEntity(nearestVehicle.vehicle);
-        //TODO save
     };
 
     exec();
+});
+
+on("mrp:valet:saveVehicle", () => {
+    let exec = async () => {
+        let ped = PlayerPedId();
+        let nearestVehicle = await getNearestVehicle(ped, config.nearestVehicleArea);
+        if (!nearestVehicle || !nearestVehicle.vehicle)
+            return;
+
+        let vehicleProperties = MRP_CLIENT.getVehicleProperties(nearestVehicle.vehicle);
+        let char = MRP_CLIENT.GetPlayerData();
+        vehicleProperties.owner = char._id;
+        vehicleProperties.location = currentlyAtBlip.id;
+        let source = GetPlayerServerId(PlayerId());
+        emitNet('mrp:vehicle:save', source, vehicleProperties);
+    };
+
+    exec();
+});
+
+RegisterNuiCallbackType('park');
+on('__cfx_nui:park', (data, cb) => {
+    if (currentlyAtBlip == null)
+        return;
+
+    emit("mrp:valet:startParkingScenario");
+    emit("mrp:valet:saveVehicle");
 
     cb();
 });
