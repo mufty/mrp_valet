@@ -50,10 +50,27 @@ setInterval(() => {
 
     if (currentlyAtBlip == null && foundBlip != null) {
         //entered blip add menu
-        emit('mrp:radial_menu:addMenuItem', {
-            id: 'park',
-            text: config.locale.park,
-            action: 'https://mrp_valet/park'
+        let char = MRP_CLIENT.GetPlayerData();
+        MRP_CLIENT.TriggerServerCallback('mrp:valet:getCarsAtLocation', [foundBlip.id, char._id], (cars) => {
+            let submenu;
+            if (cars || cars.length > 0) {
+                submenu = [];
+                for (let car of cars) {
+                    let displayName = GetDisplayNameFromVehicleModel(car.model);
+                    displayName = GetLabelText(displayName);
+                    submenu.push({
+                        plate: car.plate,
+                        model: displayName
+                    });
+                }
+            }
+            console.log(JSON.stringify(submenu));
+            emit('mrp:radial_menu:addMenuItem', {
+                id: 'park',
+                text: config.locale.park,
+                submenu: submenu,
+                action: 'https://mrp_valet/park'
+            });
         });
     } else if (currentlyAtBlip != null && foundBlip == null) {
         //leaving blip remove menu
