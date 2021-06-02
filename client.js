@@ -174,8 +174,86 @@ on("mrp:valet:saveVehicle", () => {
 });
 
 on('mrp:valet:takeOut', (data) => {
-    console.log(data.id);
     //TODO take out vehicle
+    MRP_CLIENT.TriggerServerCallback('mrp:valet:takeoutVehicle', [data.id], (vehicle) => {
+        if (!vehicle)
+            return;
+
+        if (!currentlyAtBlip)
+            return;
+
+        let exec = async () => {
+            RequestModel(vehicle.model);
+            while (currentlyAtBlip && !HasModelLoaded(vehicle.model)) {
+                await utils.sleep(100);
+            }
+
+            let spawnedVehicle = CreateVehicle(vehicle.model,
+                currentlyAtBlip.parkAt.x,
+                currentlyAtBlip.parkAt.y,
+                currentlyAtBlip.parkAt.z,
+                currentlyAtBlip.parkAt.heading,
+                true,
+                true);
+
+            //apply modification and look
+            MRP_CLIENT.setVehicleProperties(spawnedVehicle, vehicle);
+
+            let modelHash = GetHashKey(currentlyAtBlip.npcSpawn.model);
+            RequestModel(modelHash);
+            while (currentlyAtBlip && !HasModelLoaded(modelHash)) {
+                await utils.sleep(100);
+            }
+
+            if (!currentlyAtBlip)
+                return;
+
+            let valetNPCPed = CreatePed(1, modelHash, currentlyAtBlip.parkAt.x,
+                currentlyAtBlip.parkAt.y,
+                currentlyAtBlip.parkAt.z,
+                currentlyAtBlip.parkAt.heading, true, true);
+            TaskEnterVehicle(valetNPCPed, spawnedVehicle, 10000, -1, 2.0, 16, 0); // teleport into the vehicle as driver
+
+            let [playerX, playerY, playerZ] = GetEntityCoords(PlayerPedId());
+
+            TaskVehicleDriveToCoord(valetNPCPed,
+                spawnedVehicle,
+                playerX,
+                playerY,
+                playerZ,
+                currentlyAtBlip.parkAt.speed,
+                1.0,
+                vehicle.model,
+                786603,
+                1.0,
+                1.0);
+
+            while (GetScriptTaskStatus(valetNPCPed, 0x93A5526E) != 7) {
+                await utils.sleep(100);
+            }
+
+            TaskLeaveVehicle(valetNPCPed, spawnedVehicle, 0);
+
+            while (GetScriptTaskStatus(valetNPCPed, 0x1AE73569) != 7) {
+                await utils.sleep(100);
+            }
+
+            //TODO TaskGoToCoordAnyMeans isn't documented very well need to look at how all the params work
+            /*TaskGoToCoordAnyMeans(valetNPCPed,
+                currentlyAtBlip.npcSpawn.x,
+                currentlyAtBlip.npcSpawn.y,
+                currentlyAtBlip.npcSpawn.z,
+                currentlyAtBlip.parkAt.speed, 1, true, 786603, 1);
+
+            while (GetScriptTaskStatus(valetNPCPed, 0x93399E79) != 7) {
+                await utils.sleep(100);
+            }
+            console.log("done walking");*/
+
+            DeleteEntity(valetNPCPed);
+        };
+        exec();
+    });
 });
 
 RegisterNuiCallbackType('park');

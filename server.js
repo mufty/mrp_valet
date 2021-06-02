@@ -28,3 +28,14 @@ onNet('mrp:valet:getCarsAtLocation', (source, locationId, ownerId) => {
         emitNet('mrp:valet:getCarsAtLocation:response', source, result);
     });
 });
+
+onNet('mrp:valet:takeoutVehicle', (source, plate) => {
+    let query = {
+        plate: plate
+    };
+
+    MRP_SERVER.read('vehicle', query, (vehicle) => {
+        emitNet('mrp:valet:takeoutVehicle:response', source, vehicle);
+        //TODO update vehicle location to "OUT"
+    });
+});
