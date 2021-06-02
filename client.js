@@ -53,7 +53,7 @@ setInterval(() => {
         let char = MRP_CLIENT.GetPlayerData();
         MRP_CLIENT.TriggerServerCallback('mrp:valet:getCarsAtLocation', [foundBlip.id, char._id], (cars) => {
             let submenu;
-            if (cars || cars.length > 0) {
+            if (cars && cars.length > 0) {
                 submenu = [];
                 submenu.push({
                     id: 'PARK_VEHICLE',
