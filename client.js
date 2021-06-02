@@ -65,7 +65,6 @@ setInterval(() => {
                     });
                 }
             }
-            console.log(JSON.stringify(submenu));
             emit('mrp:radial_menu:addMenuItem', {
                 id: 'park',
                 text: config.locale.park,
