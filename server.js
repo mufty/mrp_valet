@@ -30,12 +30,19 @@ onNet('mrp:valet:getCarsAtLocation', (source, locationId, ownerId) => {
 });
 
 onNet('mrp:valet:takeoutVehicle', (source, plate) => {
+    plate = plate.trim();
     let query = {
         plate: plate
     };
 
     MRP_SERVER.read('vehicle', query, (vehicle) => {
+        MRP_SERVER.update('vehicle', {
+            location: "OUT"
+        }, () => {
+            exports["mrp_core"].log('Vehicle updated!');
+        }, {
+            plate: plate
+        });
         emitNet('mrp:valet:takeoutVehicle:response', source, vehicle);
-        //TODO update vehicle location to "OUT"
     });
 });

@@ -11,6 +11,7 @@
         }
     ],
     "valet_1": {
+        "timeout": 60000,
         "area": 40,
         "npcSpawn": {
             "model": "s_m_y_valet_01",

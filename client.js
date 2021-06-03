@@ -27,6 +27,39 @@ for (let info of blips) {
 
 let currentlyAtBlip = null;
 
+let buildMenu = (blip) => {
+    emit('mrp:radial_menu:removeMenuItem', {
+        id: 'park'
+    });
+    let char = MRP_CLIENT.GetPlayerData();
+    MRP_CLIENT.TriggerServerCallback('mrp:valet:getCarsAtLocation', [blip.id, char._id], (cars) => {
+        let submenu;
+        if (cars && cars.length > 0) {
+            submenu = [];
+            submenu.push({
+                id: 'PARK_VEHICLE',
+                text: "Park current vehicle",
+                action: 'https://mrp_valet/park'
+            });
+            for (let car of cars) {
+                let displayName = GetDisplayNameFromVehicleModel(car.model);
+                displayName = GetLabelText(displayName);
+                submenu.push({
+                    id: car.plate,
+                    text: displayName + " [" + car.plate + "]",
+                    action: 'https://mrp_valet/takeOut'
+                });
+            }
+        }
+        emit('mrp:radial_menu:addMenuItem', {
+            id: 'park',
+            text: config.locale.park,
+            submenu: submenu,
+            action: 'https://mrp_valet/park'
+        });
+    });
+};
+
 setInterval(() => {
     let ped = PlayerPedId();
     if (!ped)
@@ -50,33 +83,7 @@ setInterval(() => {
 
     if (currentlyAtBlip == null && foundBlip != null) {
         //entered blip add menu
-        let char = MRP_CLIENT.GetPlayerData();
-        MRP_CLIENT.TriggerServerCallback('mrp:valet:getCarsAtLocation', [foundBlip.id, char._id], (cars) => {
-            let submenu;
-            if (cars && cars.length > 0) {
-                submenu = [];
-                submenu.push({
-                    id: 'PARK_VEHICLE',
-                    text: "Park current vehicle",
-                    action: 'https://mrp_valet/park'
-                });
-                for (let car of cars) {
-                    let displayName = GetDisplayNameFromVehicleModel(car.model);
-                    displayName = GetLabelText(displayName);
-                    submenu.push({
-                        id: car.plate,
-                        text: displayName + " [" + car.plate + "]",
-                        action: 'https://mrp_valet/takeOut'
-                    });
-                }
-            }
-            emit('mrp:radial_menu:addMenuItem', {
-                id: 'park',
-                text: config.locale.park,
-                submenu: submenu,
-                action: 'https://mrp_valet/park'
-            });
-        });
+        buildMenu(foundBlip);
     } else if (currentlyAtBlip != null && foundBlip == null) {
         //leaving blip remove menu
         emit('mrp:radial_menu:removeMenuItem', {
@@ -88,7 +95,7 @@ setInterval(() => {
 
 let getNearestVehicle = (ped, area) => {
     return new Promise((resolve) => {
-        MRP_CLIENT.findNearestAccessibleVehicle(ped, 30, (veh) => {
+        MRP_CLIENT.findNearestAccessibleVehicle(ped, 30, false, (veh) => {
             resolve(veh);
         });
     });
@@ -96,8 +103,20 @@ let getNearestVehicle = (ped, area) => {
 
 let vehiclesParking = {};
 
+let isTimedout = (startTime) => {
+    let currentTs = Date.now();
+    if (!currentlyAtBlip)
+        return true;
+
+    if (currentTs - startTime > currentlyAtBlip.timeout) {
+        return true;
+    }
+    return false;
+};
+
 on("mrp:valet:startParkingScenario", () => {
     let exec = async () => {
+        let actionStarted = Date.now();
         let ped = PlayerPedId();
         let nearestVehicle = await getNearestVehicle(ped, config.nearestVehicleArea);
         if (!nearestVehicle || !nearestVehicle.vehicle)
@@ -110,7 +129,7 @@ on("mrp:valet:startParkingScenario", () => {
 
         let modelHash = GetHashKey(currentlyAtBlip.npcSpawn.model);
         RequestModel(modelHash);
-        while (currentlyAtBlip && !HasModelLoaded(modelHash)) {
+        while (currentlyAtBlip && !HasModelLoaded(modelHash) && !isTimedout(actionStarted)) {
             await utils.sleep(100);
         }
 
@@ -123,7 +142,7 @@ on("mrp:valet:startParkingScenario", () => {
         TaskEnterVehicle(valetNPCPed, nearestVehicle.vehicle, 10000, -1, 2.0, 1, 0);
         await utils.sleep(150);
         //task numbers from https://alloc8or.re/gta5/doc/enums/eScriptTaskHash.txt
-        while (GetScriptTaskStatus(valetNPCPed, 0x950B6492) != 7) {
+        while (GetScriptTaskStatus(valetNPCPed, 0x950B6492) != 7 && !isTimedout(actionStarted)) {
             //wait until NPC in vehicle
             await utils.sleep(100);
         }
@@ -141,7 +160,7 @@ on("mrp:valet:startParkingScenario", () => {
             1.0,
             1.0);
 
-        while (GetScriptTaskStatus(valetNPCPed, 0x93A5526E) != 7) {
+        while (GetScriptTaskStatus(valetNPCPed, 0x93A5526E) != 7 && !isTimedout(actionStarted)) {
             //wait they finish a drive
             await utils.sleep(100);
         }
@@ -173,6 +192,13 @@ on("mrp:valet:saveVehicle", () => {
     exec();
 });
 
+onNet('mrp:vehicle:saved', () => {
+    if (currentlyAtBlip) {
+        console.log("updating radial menu");
+        buildMenu(currentlyAtBlip);
+    }
+});
+
 on('mrp:valet:takeOut', (data) => {
     //TODO take out vehicle
     MRP_CLIENT.TriggerServerCallback('mrp:valet:takeoutVehicle', [data.id], (vehicle) => {
@@ -182,9 +208,29 @@ on('mrp:valet:takeOut', (data) => {
         if (!currentlyAtBlip)
             return;
 
+        //check parking vehicles and despawn them if one is already out to prevent douplicate vehicles
+        if (vehiclesParking) {
+            let vehiclesToRemove = [];
+            for (let parkingVehicle in vehiclesParking) {
+                let parkingPlate = GetVehicleNumberPlateText(parkingVehicle).trim();
+                if (parkingPlate == vehicle.plate) {
+                    DeleteEntity(parkingVehicle);
+                    vehiclesToRemove.push(parkingVehicle);
+                }
+            }
+
+            if (vehiclesToRemove.length > 0) {
+                for (let i in vehiclesToRemove) {
+                    let veh = vehiclesToRemove[i];
+                    delete vehiclesParking[veh];
+                }
+            }
+        }
+
         let exec = async () => {
+            let actionStarted = Date.now();
             RequestModel(vehicle.model);
-            while (currentlyAtBlip && !HasModelLoaded(vehicle.model)) {
+            while (currentlyAtBlip && !HasModelLoaded(vehicle.model) && !isTimedout(actionStarted)) {
                 await utils.sleep(100);
             }
 
@@ -199,9 +245,11 @@ on('mrp:valet:takeOut', (data) => {
             //apply modification and look
             MRP_CLIENT.setVehicleProperties(spawnedVehicle, vehicle);
 
+            buildMenu(currentlyAtBlip);
+
             let modelHash = GetHashKey(currentlyAtBlip.npcSpawn.model);
             RequestModel(modelHash);
-            while (currentlyAtBlip && !HasModelLoaded(modelHash)) {
+            while (currentlyAtBlip && !HasModelLoaded(modelHash) && !isTimedout(actionStarted)) {
                 await utils.sleep(100);
             }
 
@@ -228,13 +276,13 @@ on('mrp:valet:takeOut', (data) => {
                 1.0,
                 1.0);
 
-            while (GetScriptTaskStatus(valetNPCPed, 0x93A5526E) != 7) {
+            while (GetScriptTaskStatus(valetNPCPed, 0x93A5526E) != 7 && !isTimedout(actionStarted)) {
                 await utils.sleep(100);
             }
 
             TaskLeaveVehicle(valetNPCPed, spawnedVehicle, 0);
 
-            while (GetScriptTaskStatus(valetNPCPed, 0x1AE73569) != 7) {
+            while (GetScriptTaskStatus(valetNPCPed, 0x1AE73569) != 7 && !isTimedout(actionStarted)) {
                 await utils.sleep(100);
             }
 
