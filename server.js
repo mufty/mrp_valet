@@ -38,10 +38,10 @@ onNet('mrp:valet:takeoutVehicle', (source, plate) => {
     MRP_SERVER.read('vehicle', query, (vehicle) => {
         MRP_SERVER.update('vehicle', {
             location: "OUT"
-        }, () => {
-            exports["mrp_core"].log('Vehicle updated!');
         }, {
             plate: plate
+        }, null, () => {
+            exports["mrp_core"].log('Vehicle updated!');
         });
         emitNet('mrp:valet:takeoutVehicle:response', source, vehicle);
     });
