@@ -6,7 +6,7 @@ while (MRP_SERVER == null) {
     print('Waiting for shared object....');
 }
 
-onNet('mrp:valet:getCarsAtLocation', (source, locationId, ownerId) => {
+onNet('mrp:valet:getCarsAtLocation', (source, locationId, ownerId, uuid) => {
     let query = {
         location: locationId,
         owner: ownerId
@@ -25,11 +25,11 @@ onNet('mrp:valet:getCarsAtLocation', (source, locationId, ownerId) => {
     };
 
     MRP_SERVER.find('vehicle', query, options, (result) => {
-        emitNet('mrp:valet:getCarsAtLocation:response', source, result);
+        emitNet('mrp:valet:getCarsAtLocation:response', source, result, uuid);
     });
 });
 
-onNet('mrp:valet:takeoutVehicle', (source, plate) => {
+onNet('mrp:valet:takeoutVehicle', (source, plate, uuid) => {
     plate = plate.trim();
     let query = {
         plate: plate
@@ -43,6 +43,6 @@ onNet('mrp:valet:takeoutVehicle', (source, plate) => {
         }, null, () => {
             exports["mrp_core"].log('Vehicle updated!');
         });
-        emitNet('mrp:valet:takeoutVehicle:response', source, vehicle);
+        emitNet('mrp:valet:takeoutVehicle:response', source, vehicle, uuid);
     });
 });
