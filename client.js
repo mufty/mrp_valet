@@ -312,7 +312,7 @@ on('__cfx_nui:park', (data, cb) => {
     emit("mrp:valet:startParkingScenario");
     emit("mrp:valet:saveVehicle");
 
-    cb();
+    cb({});
 });
 
 RegisterNuiCallbackType('takeOut');
@@ -322,5 +322,5 @@ on('__cfx_nui:takeOut', (data, cb) => {
 
     emit("mrp:valet:takeOut", data);
 
-    cb();
+    cb({});
 });
