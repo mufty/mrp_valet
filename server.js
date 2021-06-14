@@ -41,7 +41,7 @@ onNet('mrp:valet:takeoutVehicle', (source, plate, uuid) => {
         }, {
             plate: plate
         }, null, () => {
-            exports["mrp_core"].log('Vehicle updated!');
+            console.log('Vehicle updated!');
         });
         emitNet('mrp:valet:takeoutVehicle:response', source, vehicle, uuid);
     });
